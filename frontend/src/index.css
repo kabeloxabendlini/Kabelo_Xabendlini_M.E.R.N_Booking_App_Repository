@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------
+   Global base styles
+------------------------------------------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+
+  h1 {
+    @apply text-3xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl font-semibold;
+  }
+
+  h4 {
+    @apply text-lg font-semibold;
+  }
+
+  p {
+    @apply leading-relaxed text-slate-700;
+  }
+
+  a {
+    @apply text-blue-600 hover:text-blue-700 transition-colors;
+  }
+}
+
+/* -------------------------------------------
+   Reusable UI components
+------------------------------------------- */
+@layer components {
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 py-6;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-slate-200;
+  }
+
+  .card-hover {
+    @apply transition-all hover:shadow-md hover:-translate-y-1;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition;
+  }
+
+  .btn-primary {
+    @apply btn bg-blue-600 text-white hover:bg-blue-500;
+  }
+
+  .btn-secondary {
+    @apply btn bg-slate-200 text-slate-800 hover:bg-slate-300;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-slate-300 px-3 py-2 
+           focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700;
+  }
+}
+
+/* -------------------------------------------
+   Utilities & helpers
+------------------------------------------- */
+@layer utilities {
+  .text-muted {
+    @apply text-slate-500;
+  }
+
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .divider {
+    @apply h-px w-full bg-slate-200;
+  }
+
+  .glass {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.65);
+  }
+}
+
+/* -------------------------------------------
+   Custom scrollbar (polished)
+------------------------------------------- */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e5e7eb;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white px-5 py-2 rounded-lg font-medium
+           hover:bg-blue-700 transition;
+  }
+
+  .badge {
+    @apply px-3 py-1 bg-gray-100 border rounded-full text-sm;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-md border;
+  }
+
+  .card-hover {
+    @apply transition hover:shadow-lg hover:-translate-y-1;
+  }
+}

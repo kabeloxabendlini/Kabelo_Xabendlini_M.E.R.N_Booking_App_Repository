@@ -1,0 +1,35 @@
+{
+  "cookies": [
+    {
+      "name": "__stripe_mid",
+      "value": "555deeb5-7472-41f2-a47c-3c8eabc8f2e79b75df",
+      "domain": ".localhost",
+      "path": "/",
+      "expires": 1801988706,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "None"
+    },
+    {
+      "name": "__stripe_sid",
+      "value": "3e69a9fc-f474-46a0-9f54-89b18bfd7866c58090",
+      "domain": ".localhost",
+      "path": "/",
+      "expires": 1770454506,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "None"
+    },
+    {
+      "name": "auth_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTgzOGFmNGJmZjU1ZjI3MzkzM2Q2ZmEiLCJpYXQiOjE3NzA0NTI3MDgsImV4cCI6MTc3MDUzOTEwOH0._SnW1LPJQoQ5h-21VrquK-5_FIueFzQ-vBRffIiI0w8",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1770539108.497,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "None"
+    }
+  ],
+  "origins": []
+}

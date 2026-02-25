@@ -11,7 +11,8 @@ import userRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
 import myHotelRoutes from "./routes/my-hotels";
 import hotelRoutes from "./routes/hotels";
-import bookingRoutes from "./routes/my-bookings";
+import myBookingsRoutes from "./routes/my-bookings";
+
 
 // -----------------------------
 // Check JWT Secret
@@ -56,7 +57,7 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: ["http://localhost:5173", "http://localhost:5174"],
   credentials: true,
 }));
 
@@ -68,7 +69,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/my-hotels", myHotelRoutes);
 app.use("/api/hotels", hotelRoutes);
-app.use("/api/my-bookings", bookingRoutes);
+app.use("/api/my-bookings", myBookingsRoutes);
 
 // Frontend catch-all route
 app.get("*", (req: Request, res: Response) => {

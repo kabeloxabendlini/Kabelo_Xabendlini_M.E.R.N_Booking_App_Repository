@@ -1,49 +1,53 @@
-import BookingForm from "../forms/BookingForm/BookingForm";
-import { useSearchContext } from "../contexts/SearchContext";
-import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import BookingDetailsSummary from "../components/BookingDetailsSummary";
-import { Elements } from "@stripe/react-stripe-js";
-import { useAppContext } from "../contexts/AppContext";
+import { useParams } from "react-router-dom";
 import { useQuery } from "react-query";
+import { Elements } from "@stripe/react-stripe-js";
+
+import BookingForm from "../forms/BookingForm/BookingForm";
+import BookingDetailsSummary from "../components/BookingDetailsSummary";
+import { useSearchContext } from "../contexts/SearchContext";
+import { useAppContext } from "../contexts/AppContext";
 import * as apiClient from "../api-client";
 
 const Booking = () => {
   const { stripePromise } = useAppContext();
   const search = useSearchContext();
-  const { hotelId } = useParams();
+  const { hotelId } = useParams<{ hotelId: string }>();
 
   const [numberOfNights, setNumberOfNights] = useState<number>(0);
 
-  // Calculate nights
   useEffect(() => {
     if (search.checkIn && search.checkOut) {
       const nights =
         Math.abs(search.checkOut.getTime() - search.checkIn.getTime()) /
         (1000 * 60 * 60 * 24);
+
       setNumberOfNights(Math.ceil(nights));
     }
   }, [search.checkIn, search.checkOut]);
 
-  // Fetch hotel details
   const { data: hotel } = useQuery(
     ["fetchHotelByID", hotelId],
-    () => apiClient.fetchHotelById(hotelId as string),
+    () => apiClient.fetchHotelById(hotelId!),
     { enabled: !!hotelId }
   );
 
-  // Fetch current user
-  const { data: currentUser } = useQuery("fetchCurrentUser", apiClient.fetchCurrentUser);
+  const { data: currentUser } = useQuery(
+    "fetchCurrentUser",
+    apiClient.fetchCurrentUser
+  );
 
-  // Create PaymentIntent only when hotelId and nights are valid
   const { data: paymentIntentData } = useQuery(
     ["createPaymentIntent", hotelId, numberOfNights],
     () =>
-      apiClient.createPaymentIntent(hotelId as string, numberOfNights.toString()),
+      apiClient.createPaymentIntent(
+        hotelId!,
+        numberOfNights.toString()
+      ),
     { enabled: !!hotelId && numberOfNights > 0 }
   );
 
-  if (!hotel) return null;
+  if (!hotel || !currentUser || !paymentIntentData) return null;
 
   return (
     <div className="grid md:grid-cols-[1fr_2fr] gap-4">
@@ -55,17 +59,17 @@ const Booking = () => {
         numberOfNights={numberOfNights}
         hotel={hotel}
       />
-      {currentUser && paymentIntentData && (
-        <Elements
-          stripe={stripePromise}
-          options={{ clientSecret: paymentIntentData.clientSecret }}
-        >
-          <BookingForm
-            currentUser={currentUser}
-            paymentIntent={paymentIntentData}
-          />
-        </Elements>
-      )}
+
+      <Elements
+        stripe={stripePromise}
+        options={{ clientSecret: paymentIntentData.clientSecret }}
+      >
+        <BookingForm
+          currentUser={currentUser}
+          hotelId={hotel._id}
+          paymentIntent={paymentIntentData}
+        />
+      </Elements>
     </div>
   );
 };

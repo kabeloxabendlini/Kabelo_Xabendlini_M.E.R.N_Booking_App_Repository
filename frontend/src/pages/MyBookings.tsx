@@ -1,48 +1,136 @@
-import { useQuery } from "react-query";
-import * as apiClient from "../api-client";
+import { useQuery, useQueryClient } from "react-query";
+import { useNavigate } from "react-router-dom";
+import * as apiClient from "../api/MyBookingsApi";
+
+type Booking = {
+  _id: string;
+  userId: string;
+  checkIn: string;
+  checkOut: string;
+  adultCount: number;
+  childCount: number;
+};
+
+type Hotel = {
+  _id: string;
+  name: string;
+  city: string;
+  country: string;
+  imageUrls: string[];
+  bookings: Booking[];
+};
 
 const MyBookings = () => {
-  const { data: hotels } = useQuery(
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Fetch all bookings
+  const { data: hotels, isLoading } = useQuery<Hotel[]>(
     "fetchMyBookings",
     apiClient.fetchMyBookings
   );
 
-  if (!hotels || hotels.length === 0) {
-    return <span>No bookings found</span>;
-  }
+  if (isLoading) return <div className="text-center mt-10">Loading...</div>;
+  if (!hotels || hotels.length === 0)
+    return <div className="text-center mt-10">No bookings found</div>;
+
+  // -----------------------------
+  // Optimistic delete
+  // -----------------------------
+  const handleDelete = async (bookingId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+
+    // Keep previous state for rollback
+    const previousData = queryClient.getQueryData<Hotel[]>("fetchMyBookings");
+
+    // Optimistic UI update
+    queryClient.setQueryData<Hotel[]>("fetchMyBookings", (old) =>
+      old?.map((hotel) => ({
+        ...hotel,
+        bookings: hotel.bookings.filter((b) => b._id !== bookingId),
+      })) || []
+    );
+
+    try {
+      await apiClient.deleteBooking(bookingId);
+      alert("Booking cancelled successfully");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to cancel booking, rolling back");
+      queryClient.setQueryData("fetchMyBookings", previousData);
+    }
+  };
+
+  // -----------------------------
+  // Navigate to edit booking
+  // -----------------------------
+  const handleEdit = (bookingId: string) => {
+    navigate(`/edit-booking/${bookingId}`);
+  };
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-3xl font-bold">My Bookings</h1>
+    <div className="space-y-6 p-4">
+      <h1 className="text-3xl font-bold text-center mb-6">My Bookings</h1>
+
       {hotels.map((hotel) => (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] border border-slate-300 rounded-lg p-8 gap-5">
-          <div className="lg:w-full lg:h-[250px]">
+        <div
+          key={hotel._id}
+          className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] border border-slate-300 rounded-lg gap-5 p-5"
+        >
+          {/* Hotel image */}
+          <div className="lg:h-[250px] w-full">
             <img
               src={hotel.imageUrls[0]}
-              className="w-full h-full object-cover object-center"
+              alt={hotel.name}
+              className="w-full h-full object-cover object-center rounded-lg"
             />
           </div>
-          <div className="flex flex-col gap-4 overflow-y-auto max-h-[300px]">
+
+          {/* Bookings list */}
+          <div className="flex flex-col gap-4">
             <div className="text-2xl font-bold">
               {hotel.name}
               <div className="text-xs font-normal">
                 {hotel.city}, {hotel.country}
               </div>
             </div>
+
+            {hotel.bookings.length === 0 && (
+              <div className="text-sm text-gray-500">No bookings for this hotel</div>
+            )}
+
             {hotel.bookings.map((booking) => (
-              <div>
-                <div>
-                  <span className="font-bold mr-2">Dates: </span>
-                  <span>
-                    {new Date(booking.checkIn).toDateString()} -
+              <div
+                key={booking._id}
+                className="flex flex-col border border-slate-200 rounded-lg p-4"
+              >
+                {/* Booking info */}
+                <div className="mb-3">
+                  <div>
+                    <span className="font-semibold mr-2">Dates:</span>
+                    {new Date(booking.checkIn).toDateString()} -{" "}
                     {new Date(booking.checkOut).toDateString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-bold mr-2">Guests:</span>
-                  <span>
+                  </div>
+                  <div>
+                    <span className="font-semibold mr-2">Guests:</span>
                     {booking.adultCount} adults, {booking.childCount} children
-                  </span>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleEdit(booking._id)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(booking._id)}
+                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             ))}

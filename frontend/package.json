@@ -13,6 +13,7 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.2.1",
+    "axios": "^1.13.5",
     "mongoose": "^9.1.5",
     "react": "^18.2.0",
     "react-datepicker": "^4.24.0",
@@ -25,6 +26,7 @@
     "slick-carousel": "^1.8.1"
   },
   "devDependencies": {
+    "@types/axios": "^0.9.36",
     "@types/react": "^18.2.15",
     "@types/react-datepicker": "^4.19.3",
     "@types/react-dom": "^18.2.7",

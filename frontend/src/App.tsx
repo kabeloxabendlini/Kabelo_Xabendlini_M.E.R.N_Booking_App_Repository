@@ -16,12 +16,14 @@ import Detail from "./pages/Detail";
 import Booking from "./pages/Booking";
 import MyBookings from "./pages/MyBookings";
 import Home from "./pages/Home";
+import EditBooking from "./pages/EditBooking"; // ✅ Import EditBooking
 
 const App = () => {
   const { isLoggedIn } = useAppContext();
   return (
     <Router>
       <Routes>
+        {/* Public routes */}
         <Route
           path="/"
           element={
@@ -63,6 +65,7 @@ const App = () => {
           }
         />
 
+        {/* Protected routes */}
         {isLoggedIn && (
           <>
             <Route
@@ -73,7 +76,6 @@ const App = () => {
                 </Layout>
               }
             />
-
             <Route
               path="/add-hotel"
               element={
@@ -106,15 +108,25 @@ const App = () => {
                 </Layout>
               }
             />
+            <Route
+              path="/edit-booking/:bookingId"
+              element={
+                <Layout>
+                  <EditBooking />
+                </Layout>
+              }
+            />
           </>
         )}
+
+        {/* Catch all */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );
 };
 
-// anywhere in your app, e.g., App.tsx or a test component
+// Stripe key debug
 console.log("Stripe key:", import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export default App;

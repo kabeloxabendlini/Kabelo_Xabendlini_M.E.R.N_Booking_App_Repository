@@ -2,19 +2,22 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import cloudinary from "cloudinary";
 import Hotel from "../models/hotel";
-import verifyToken from "../middleware/auth";
-import { body } from "express-validator";
+import verifyToken from "../middleware/verifyToken";
+import { body, validationResult } from "express-validator";
 import { HotelType } from "../shared/types";
 
 const router = express.Router();
 
+/* ---------------- MULTER CONFIG ---------------- */
+
 const storage = multer.memoryStorage();
+
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
+
+/* ---------------- CREATE HOTEL ---------------- */
 
 router.post(
   "/",
@@ -28,15 +31,17 @@ router.post(
     body("pricePerNight")
       .notEmpty()
       .isNumeric()
-      .withMessage("Price per night is required and must be a number"),
-    body("facilities")
-      .notEmpty()
-      .isArray()
-      .withMessage("Facilities are required"),
+      .withMessage("Price per night must be a number"),
+    body("facilities").isArray().withMessage("Facilities must be an array"),
   ],
   upload.array("imageFiles", 6),
   async (req: Request, res: Response) => {
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
       const imageFiles = req.files as Express.Multer.File[];
       const newHotel: HotelType = req.body;
 
@@ -44,18 +49,20 @@ router.post(
 
       newHotel.imageUrls = imageUrls;
       newHotel.lastUpdated = new Date();
-      newHotel.userId = req.userId;
+      newHotel.userId = req.userId!;
 
       const hotel = new Hotel(newHotel);
       await hotel.save();
 
-      res.status(201).send(hotel);
-    } catch (e) {
-      console.log(e);
+      res.status(201).json(hotel);
+    } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Something went wrong" });
     }
   }
 );
+
+/* ---------------- GET ALL HOTELS ---------------- */
 
 router.get("/", verifyToken, async (req: Request, res: Response) => {
   try {
@@ -66,67 +73,106 @@ router.get("/", verifyToken, async (req: Request, res: Response) => {
   }
 });
 
+/* ---------------- GET SINGLE HOTEL ---------------- */
+
 router.get("/:id", verifyToken, async (req: Request, res: Response) => {
-  const id = req.params.id.toString();
   try {
     const hotel = await Hotel.findOne({
-      _id: id,
+      _id: req.params.id,
       userId: req.userId,
     });
+
+    if (!hotel) {
+      return res.status(404).json({ message: "Hotel not found" });
+    }
+
     res.json(hotel);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching hotels" });
+    res.status(500).json({ message: "Error fetching hotel" });
   }
 });
+
+/* ---------------- UPDATE HOTEL ---------------- */
 
 router.put(
   "/:hotelId",
   verifyToken,
-  upload.array("imageFiles"),
+  upload.array("imageFiles", 6),
   async (req: Request, res: Response) => {
     try {
       const updatedHotel: HotelType = req.body;
-      updatedHotel.lastUpdated = new Date();
 
-      const hotel = await Hotel.findOneAndUpdate(
-        {
-          _id: req.params.hotelId,
-          userId: req.userId,
-        },
-        updatedHotel,
-        { new: true }
-      );
+      const hotel = await Hotel.findOne({
+        _id: req.params.hotelId,
+        userId: req.userId,
+      });
 
       if (!hotel) {
         return res.status(404).json({ message: "Hotel not found" });
       }
 
-      const files = req.files as Express.Multer.File[];
-      const updatedImageUrls = await uploadImages(files);
+      hotel.name = updatedHotel.name;
+      hotel.city = updatedHotel.city;
+      hotel.country = updatedHotel.country;
+      hotel.description = updatedHotel.description;
+      hotel.type = updatedHotel.type;
+      hotel.pricePerNight = updatedHotel.pricePerNight;
+      hotel.facilities = updatedHotel.facilities;
+      hotel.adultCount = updatedHotel.adultCount;
+      hotel.childCount = updatedHotel.childCount;
+      hotel.starRating = updatedHotel.starRating;
+      hotel.lastUpdated = new Date();
 
-      hotel.imageUrls = [
-        ...updatedImageUrls,
-        ...(updatedHotel.imageUrls || []),
-      ];
+      const files = req.files as Express.Multer.File[];
+      if (files && files.length > 0) {
+        const newImageUrls = await uploadImages(files);
+        hotel.imageUrls = [...hotel.imageUrls, ...newImageUrls];
+      }
 
       await hotel.save();
-      res.status(201).json(hotel);
+      res.json(hotel);
     } catch (error) {
-      res.status(500).json({ message: "Something went throw" });
+      res.status(500).json({ message: "Error updating hotel" });
     }
   }
 );
 
+/* ---------------- DELETE HOTEL ---------------- */
+
+router.delete(
+  "/:hotelId",
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      const deletedHotel = await Hotel.findOneAndDelete({
+        _id: req.params.hotelId,
+        userId: req.userId,
+      });
+
+      if (!deletedHotel) {
+        return res.status(404).json({ message: "Hotel not found" });
+      }
+
+      res.json({ message: "Hotel deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting hotel" });
+    }
+  }
+);
+
+/* ---------------- CLOUDINARY UPLOAD HELPER ---------------- */
+
 async function uploadImages(imageFiles: Express.Multer.File[]) {
+  if (!imageFiles || imageFiles.length === 0) return [];
+
   const uploadPromises = imageFiles.map(async (image) => {
     const b64 = Buffer.from(image.buffer).toString("base64");
-    let dataURI = "data:" + image.mimetype + ";base64," + b64;
-    const res = await cloudinary.v2.uploader.upload(dataURI);
-    return res.url;
+    const dataURI = `data:${image.mimetype};base64,${b64}`;
+    const result = await cloudinary.v2.uploader.upload(dataURI);
+    return result.secure_url;
   });
 
-  const imageUrls = await Promise.all(uploadPromises);
-  return imageUrls;
+  return Promise.all(uploadPromises);
 }
 
 export default router;

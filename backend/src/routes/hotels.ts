@@ -3,7 +3,7 @@ import Hotel from "../models/hotel";
 import { BookingType, HotelSearchResponse } from "../shared/types";
 import { param, validationResult } from "express-validator";
 import Stripe from "stripe";
-import verifyToken from "../middleware/auth";
+import verifyToken from "../middleware/verifyToken";
 
 const stripe = new Stripe(process.env.STRIPE_API_KEY as string);
 
@@ -105,7 +105,7 @@ router.post(
       currency: "gbp",
       metadata: {
         hotelId,
-        userId: req.userId,
+        userId: req.userId!,
       },
     });
 

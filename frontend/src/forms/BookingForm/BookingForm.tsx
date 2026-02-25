@@ -1,18 +1,16 @@
 import { useForm } from "react-hook-form";
-import {
-  PaymentIntentResponse,
-  UserType,
-} from "../../../../backend/src/shared/types";
 import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { StripeCardElement } from "@stripe/stripe-js";
 import { useSearchContext } from "../../contexts/SearchContext";
-import { useParams } from "react-router-dom";
-import { useMutation } from "react-query";
-import * as apiClient from "../../api-client";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "react-query";
 import { useAppContext } from "../../contexts/AppContext";
+import * as apiClient from "../../api-client";
+import { PaymentIntentResponse, UserType } from "../../../../backend/src/shared/types";
 
 type Props = {
   currentUser: UserType;
+  hotelId: string;
   paymentIntent: PaymentIntentResponse;
 };
 
@@ -29,28 +27,15 @@ export type BookingFormData = {
   totalCost: number;
 };
 
-const BookingForm = ({ currentUser, paymentIntent }: Props) => {
+const BookingForm = ({ currentUser, hotelId, paymentIntent }: Props) => {
   const stripe = useStripe();
   const elements = useElements();
-
   const search = useSearchContext();
-  const { hotelId } = useParams();
-
+  const navigate = useNavigate();
   const { showToast } = useAppContext();
+  const queryClient = useQueryClient();
 
-  const { mutate: bookRoom, isLoading } = useMutation(
-    apiClient.createRoomBooking,
-    {
-      onSuccess: () => {
-        showToast({ message: "Booking Saved!", type: "SUCCESS" });
-      },
-      onError: () => {
-        showToast({ message: "Error saving booking", type: "ERROR" });
-      },
-    }
-  );
-
-  const { handleSubmit, register } = useForm<BookingFormData>({
+  const { handleSubmit } = useForm<BookingFormData>({
     defaultValues: {
       firstName: currentUser.firstName,
       lastName: currentUser.lastName,
@@ -59,37 +44,70 @@ const BookingForm = ({ currentUser, paymentIntent }: Props) => {
       childCount: search.childCount,
       checkIn: search.checkIn.toISOString(),
       checkOut: search.checkOut.toISOString(),
-      hotelId: hotelId,
+      hotelId,
       totalCost: paymentIntent.totalCost,
       paymentIntentId: paymentIntent.paymentIntentId,
     },
   });
 
-  const onSubmit = async (formData: BookingFormData) => {
-  if (!stripe || !elements) return;
-
-  const cardElement = elements.getElement(CardElement) as StripeCardElement;
-
-  const result = await stripe.confirmCardPayment(paymentIntent.clientSecret, {
-    payment_method: {
-      card: cardElement,
-      billing_details: {
-        name: `${formData.firstName} ${formData.lastName}`,
-        email: formData.email,
-      },
+  const { mutate: bookRoom, isLoading } = useMutation(apiClient.createRoomBooking, {
+    onError: () => {
+      showToast({ message: "Failed to save booking", type: "ERROR" });
+    },
+    onSuccess: () => {
+      showToast({ message: "Booking saved!", type: "SUCCESS" });
+      navigate("/my-bookings");
     },
   });
 
-  if (result.error) {
-    showToast({ message: result.error.message || "Payment failed", type: "ERROR" });
-    return;
-  }
+  const onSubmit = async () => {
+    if (!stripe || !elements) return;
 
-  if (result.paymentIntent?.status === "succeeded") {
-    // Update the booking with Stripe paymentIntent ID
-    bookRoom({ ...formData, paymentIntentId: result.paymentIntent.id });
-  }
-};
+    const cardElement = elements.getElement(CardElement) as StripeCardElement;
+
+    const result = await stripe.confirmCardPayment(paymentIntent.clientSecret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          name: `${currentUser.firstName} ${currentUser.lastName}`,
+          email: currentUser.email,
+        },
+      },
+    });
+
+    if (result.error) {
+      showToast({ message: result.error.message || "Payment failed", type: "ERROR" });
+      return;
+    }
+
+    if (result.paymentIntent?.status === "succeeded") {
+      const newBooking = {
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+        email: currentUser.email,
+        adultCount: search.adultCount,
+        childCount: search.childCount,
+        checkIn: search.checkIn.toISOString(),
+        checkOut: search.checkOut.toISOString(),
+        hotelId,
+        paymentIntentId: result.paymentIntent.id,
+        totalCost: paymentIntent.totalCost,
+        _id: result.paymentIntent.id, // temp id for optimistic UI
+      };
+
+      // Optimistic update: add booking to cache immediately
+      queryClient.setQueryData<any>("fetchMyBookings", (old: any) =>
+        old?.map((hotel: any) =>
+          hotel._id === hotelId
+            ? { ...hotel, bookings: [...hotel.bookings, newBooking] }
+            : hotel
+        )
+      );
+
+      // Persist booking to backend
+      bookRoom(newBooking);
+    }
+  };
 
   return (
     <form
@@ -97,65 +115,32 @@ const BookingForm = ({ currentUser, paymentIntent }: Props) => {
       className="grid grid-cols-1 gap-5 rounded-lg border border-slate-300 p-5"
     >
       <span className="text-3xl font-bold">Confirm Your Details</span>
+
       <div className="grid grid-cols-2 gap-6">
-        <label className="text-gray-700 text-sm font-bold flex-1">
-          First Name
-          <input
-            className="mt-1 border rounded w-full py-2 px-3 text-gray-700 bg-gray-200 font-normal"
-            type="text"
-            readOnly
-            disabled
-            {...register("firstName")}
-          />
-        </label>
-        <label className="text-gray-700 text-sm font-bold flex-1">
-          Last Name
-          <input
-            className="mt-1 border rounded w-full py-2 px-3 text-gray-700 bg-gray-200 font-normal"
-            type="text"
-            readOnly
-            disabled
-            {...register("lastName")}
-          />
-        </label>
-        <label className="text-gray-700 text-sm font-bold flex-1">
-          Email
-          <input
-            className="mt-1 border rounded w-full py-2 px-3 text-gray-700 bg-gray-200 font-normal"
-            type="text"
-            readOnly
-            disabled
-            {...register("email")}
-          />
-        </label>
+        <input type="text" readOnly value={currentUser.firstName} className="border p-2 rounded w-full" />
+        <input type="text" readOnly value={currentUser.lastName} className="border p-2 rounded w-full" />
+        <input type="text" readOnly value={currentUser.email} className="border p-2 rounded w-full" />
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold">Your Price Summary</h2>
-
+        <h2 className="text-xl font-semibold">Total Cost</h2>
         <div className="bg-blue-200 p-4 rounded-md">
-          <div className="font-semibold text-lg">
-            Total Cost: £{paymentIntent.totalCost.toFixed(2)}
-          </div>
-          <div className="text-xs">Includes taxes and charges</div>
+          £{paymentIntent.totalCost.toFixed(2)}
         </div>
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold"> Payment Details</h3>
-        <CardElement
-          id="payment-element"
-          className="border rounded-md p-2 text-sm"
-        />
+        <h3 className="text-xl font-semibold">Payment Details</h3>
+        <CardElement className="border rounded-md p-2 text-sm" />
       </div>
 
       <div className="flex justify-end">
         <button
-          disabled={isLoading}
           type="submit"
-          className="bg-blue-600 text-white p-2 font-bold hover:bg-blue-500 text-md disabled:bg-gray-500"
+          disabled={isLoading}
+          className="bg-blue-600 text-white p-2 font-bold hover:bg-blue-500 disabled:bg-gray-500"
         >
-          {isLoading ? "Saving..." : "Confirm Booking"}
+          {isLoading ? "Processing..." : "Confirm Booking"}
         </button>
       </div>
     </form>

@@ -43,11 +43,16 @@ if (!MONGO_URI) {
 // -------------------------------------
 const requiredEnvVars = [
   "JWT_SECRET_KEY",
+  "MONGO_USERNAME",
+  "MONGO_PASSWORD",
+  "MONGO_URI",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",
   "STRIPE_SECRET_KEY",
-  "FRONTEND_URL",
+  "PORT",
+  "NODE_ENV",
+  "FRONTEND_URL"
 ];
 
 requiredEnvVars.forEach((key) => {

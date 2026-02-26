@@ -5,7 +5,7 @@
   "main": "./dist/index.js",
   "scripts": {
     "dev": "nodemon ./src/index.ts",
-    "build": "tsc",
+    "build": "npm install --include=dev && tsc",
     "start": "node ./dist/index.js"
   },
   "author": "Kabelo Xabendlini",
@@ -26,7 +26,6 @@
     "multer": "^1.4.5-lts.1",
     "stripe": "^14.25.0"
   },
-  
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.6",

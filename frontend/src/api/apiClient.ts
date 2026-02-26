@@ -1,9 +1,32 @@
-import { apiClient } from "./apiClient";
+// src/api/apiClient.ts
+import axios from "axios";
+
+// Use your Render deployed backend URL here
+const API_BASE_URL = "https://kabelo-xabendlini-m-e-r-n-booking-app.onrender.com";
+
+// Create an Axios instance
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true, // important!
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 // ----------------------
-// Types
+// Auth API
 // ----------------------
+export const login = async (email: string, password: string) => {
+  return apiClient.post("/api/auth/login", { email, password });
+};
 
+export const validateToken = async () => {
+  return apiClient.get("/api/auth/validate-token");
+};
+
+// ----------------------
+// Bookings API
+// ----------------------
 export type Booking = {
   _id: string;
   userId: string;
@@ -22,10 +45,6 @@ export type Hotel = {
   bookings: Booking[];
 };
 
-// ----------------------
-// API functions
-// ----------------------
-
 export const fetchMyBookings = async (): Promise<Hotel[]> => {
   const response = await apiClient.get<Hotel[]>("/api/my-bookings");
   return response.data;
@@ -38,8 +57,8 @@ export const deleteBooking = async (bookingId: string) => {
 export const updateBooking = async (
   bookingId: string,
   data: {
-    checkIn: Date;
-    checkOut: Date;
+    checkIn: string; // use ISO strings for dates
+    checkOut: string;
     adultCount: number;
     childCount: number;
   }

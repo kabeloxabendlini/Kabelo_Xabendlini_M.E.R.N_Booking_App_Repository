@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import * as apiClient from "../api/MyBookingsApi";
@@ -23,11 +24,21 @@ type Hotel = {
 const MyBookings = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Fetch all bookings
   const { data: hotels, isLoading } = useQuery<Hotel[]>(
     "fetchMyBookings",
-    apiClient.fetchMyBookings
+    apiClient.fetchMyBookings,
+    {
+      retry: false,
+      onError: (err: any) => {
+        if (err.response?.status === 401) {
+          alert("Session expired. Please login again.");
+          navigate("/login");
+        }
+      },
+    }
   );
 
   if (isLoading) return <div className="text-center mt-10">Loading...</div>;
@@ -40,7 +51,7 @@ const MyBookings = () => {
   const handleDelete = async (bookingId: string) => {
     if (!window.confirm("Are you sure you want to cancel this booking?")) return;
 
-    // Keep previous state for rollback
+    setDeletingId(bookingId);
     const previousData = queryClient.getQueryData<Hotel[]>("fetchMyBookings");
 
     // Optimistic UI update
@@ -58,6 +69,8 @@ const MyBookings = () => {
       console.error(err);
       alert("Failed to cancel booking, rolling back");
       queryClient.setQueryData("fetchMyBookings", previousData);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -80,7 +93,7 @@ const MyBookings = () => {
           {/* Hotel image */}
           <div className="lg:h-[250px] w-full">
             <img
-              src={hotel.imageUrls[0]}
+              src={hotel.imageUrls[0] || "/fallback-hotel.jpg"}
               alt={hotel.name}
               className="w-full h-full object-cover object-center rounded-lg"
             />
@@ -127,7 +140,10 @@ const MyBookings = () => {
                   </button>
                   <button
                     onClick={() => handleDelete(booking._id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    disabled={deletingId === booking._id}
+                    className={`bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 ${
+                      deletingId === booking._id ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
                     Cancel
                   </button>

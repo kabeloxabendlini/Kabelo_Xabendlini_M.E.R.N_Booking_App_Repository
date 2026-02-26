@@ -1,4 +1,4 @@
-import { apiClient } from "./axios";
+import { apiClient } from "./apiClient";
 
 export const login = async (data: {
   email: string;

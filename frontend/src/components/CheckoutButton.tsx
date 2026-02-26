@@ -10,7 +10,7 @@ const CheckoutButton: React.FC<CheckoutButtonProps> = ({ items }) => {
   const handleCheckout = async () => {
     const stripe = await stripePromise;
 
-    const response = await fetch('http://localhost:7000/payment/create-checkout-session', {
+    const response = await fetch('https://booking-app-backend-8uwr.onrender.com/payment/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items }),

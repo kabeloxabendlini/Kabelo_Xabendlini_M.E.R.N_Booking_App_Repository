@@ -1,6 +1,9 @@
-import axios from "axios";
+import { apiClient } from "./axios";
 
+// ----------------------
 // Types
+// ----------------------
+
 export type Booking = {
   _id: string;
   userId: string;
@@ -19,24 +22,17 @@ export type Hotel = {
   bookings: Booking[];
 };
 
-// Base URL for backend
-const API_BASE_URL = "http://localhost:7000"; // <- Make sure this matches your backend
-
 // ----------------------
 // API functions
 // ----------------------
-export const fetchMyBookings = async (): Promise<Hotel[]> => {
-  const response = await axios.get<Hotel[]>(`${API_BASE_URL}/api/my-bookings`, {
-    withCredentials: true,
-  });
 
+export const fetchMyBookings = async (): Promise<Hotel[]> => {
+  const response = await apiClient.get<Hotel[]>("/api/my-bookings");
   return response.data;
 };
 
 export const deleteBooking = async (bookingId: string) => {
-  await axios.delete(`${API_BASE_URL}/api/my-bookings/${bookingId}`, {
-    withCredentials: true,
-  });
+  await apiClient.delete(`/api/my-bookings/${bookingId}`);
 };
 
 export const updateBooking = async (
@@ -48,7 +44,5 @@ export const updateBooking = async (
     childCount: number;
   }
 ) => {
-  await axios.put(`${API_BASE_URL}/api/my-bookings/${bookingId}`, data, {
-    withCredentials: true,
-  });
+  await apiClient.put(`/api/my-bookings/${bookingId}`, data);
 };

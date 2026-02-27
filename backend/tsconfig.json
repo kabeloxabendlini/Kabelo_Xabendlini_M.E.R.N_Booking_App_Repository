@@ -6,7 +6,9 @@
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true, // avoids case-sensitive issues
+    "resolveJsonModule": true                // if you import .json anywhere
   },
   "include": ["src"]
 }

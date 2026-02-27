@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import multer from "multer";
+import multer, { File as MulterFile } from "multer";
 import cloudinary from "cloudinary";
 import Hotel from "../models/hotel";
 import verifyToken from "../middleware/verifyToken";
@@ -9,16 +9,13 @@ import { HotelType } from "../shared/types";
 const router = express.Router();
 
 /* ---------------- MULTER CONFIG ---------------- */
-
 const storage = multer.memoryStorage();
-
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
 /* ---------------- CREATE HOTEL ---------------- */
-
 router.post(
   "/",
   verifyToken,
@@ -42,11 +39,10 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const imageFiles = req.files as Express.Multer.File[];
+      const imageFiles = req.files as MulterFile[];
       const newHotel: HotelType = req.body;
 
       const imageUrls = await uploadImages(imageFiles);
-
       newHotel.imageUrls = imageUrls;
       newHotel.lastUpdated = new Date();
       newHotel.userId = req.userId!;
@@ -63,7 +59,6 @@ router.post(
 );
 
 /* ---------------- GET ALL HOTELS ---------------- */
-
 router.get("/", verifyToken, async (req: Request, res: Response) => {
   try {
     const hotels = await Hotel.find({ userId: req.userId });
@@ -74,17 +69,13 @@ router.get("/", verifyToken, async (req: Request, res: Response) => {
 });
 
 /* ---------------- GET SINGLE HOTEL ---------------- */
-
 router.get("/:id", verifyToken, async (req: Request, res: Response) => {
   try {
     const hotel = await Hotel.findOne({
       _id: req.params.id,
       userId: req.userId,
     });
-
-    if (!hotel) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
+    if (!hotel) return res.status(404).json({ message: "Hotel not found" });
 
     res.json(hotel);
   } catch (error) {
@@ -93,7 +84,6 @@ router.get("/:id", verifyToken, async (req: Request, res: Response) => {
 });
 
 /* ---------------- UPDATE HOTEL ---------------- */
-
 router.put(
   "/:hotelId",
   verifyToken,
@@ -106,11 +96,9 @@ router.put(
         _id: req.params.hotelId,
         userId: req.userId,
       });
+      if (!hotel) return res.status(404).json({ message: "Hotel not found" });
 
-      if (!hotel) {
-        return res.status(404).json({ message: "Hotel not found" });
-      }
-
+      // Update fields
       hotel.name = updatedHotel.name;
       hotel.city = updatedHotel.city;
       hotel.country = updatedHotel.country;
@@ -123,7 +111,8 @@ router.put(
       hotel.starRating = updatedHotel.starRating;
       hotel.lastUpdated = new Date();
 
-      const files = req.files as Express.Multer.File[];
+      // Handle new images
+      const files = req.files as MulterFile[];
       if (files && files.length > 0) {
         const newImageUrls = await uploadImages(files);
         hotel.imageUrls = [...hotel.imageUrls, ...newImageUrls];
@@ -138,31 +127,23 @@ router.put(
 );
 
 /* ---------------- DELETE HOTEL ---------------- */
+router.delete("/:hotelId", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const deletedHotel = await Hotel.findOneAndDelete({
+      _id: req.params.hotelId,
+      userId: req.userId,
+    });
+    if (!deletedHotel)
+      return res.status(404).json({ message: "Hotel not found" });
 
-router.delete(
-  "/:hotelId",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const deletedHotel = await Hotel.findOneAndDelete({
-        _id: req.params.hotelId,
-        userId: req.userId,
-      });
-
-      if (!deletedHotel) {
-        return res.status(404).json({ message: "Hotel not found" });
-      }
-
-      res.json({ message: "Hotel deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Error deleting hotel" });
-    }
+    res.json({ message: "Hotel deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting hotel" });
   }
-);
+});
 
 /* ---------------- CLOUDINARY UPLOAD HELPER ---------------- */
-
-async function uploadImages(imageFiles: Express.Multer.File[]) {
+async function uploadImages(imageFiles: MulterFile[]) {
   if (!imageFiles || imageFiles.length === 0) return [];
 
   const uploadPromises = imageFiles.map(async (image) => {

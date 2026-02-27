@@ -1,7 +1,5 @@
-import * as multer from 'multer';
+import "multer";
 
-declare global {
-  namespace Express {
-    export type Multer = multer.Multer;
-  }
+declare module "multer" {
+  export type File = Express.Multer.File;
 }

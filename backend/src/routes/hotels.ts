@@ -4,17 +4,35 @@ import { BookingType, HotelSearchResponse } from "../shared/types";
 import { param, validationResult } from "express-validator";
 import Stripe from "stripe";
 import verifyToken from "../middleware/verifyToken";
+import { ParsedQs } from "qs"; 
 
-const stripe = new Stripe(process.env.STRIPE_API_KEY as string);
+const router = express.Router(); // <--- declare first
 
-const router = express.Router();
+const stripe = new Stripe(process.env.STRIPE_API_KEY as string, {
+  apiVersion: "2023-10-16",
+});
 
+// Helper function
+function getQueryString(value: string | ParsedQs | (string | ParsedQs)[] | undefined): string {
+  if (!value) return "1"; // default
+  if (Array.isArray(value)) return typeof value[0] === "string" ? value[0] : "1";
+  if (typeof value === "string") return value;
+  return "1";
+}
+
+/* ---------------- SEARCH HOTELS ---------------- */
 router.get("/search", async (req: Request, res: Response) => {
   try {
     const query = constructSearchQuery(req.query);
 
-    let sortOptions = {};
-    switch (req.query.sortOption) {
+    let sortOptions: Record<string, 1 | -1> = {};
+    const sortOption = Array.isArray(req.query.sortOption)
+      ? req.query.sortOption[0]
+      : typeof req.query.sortOption === "string"
+      ? req.query.sortOption
+      : undefined;
+
+    switch (sortOption) {
       case "starRating":
         sortOptions = { starRating: -1 };
         break;
@@ -27,16 +45,11 @@ router.get("/search", async (req: Request, res: Response) => {
     }
 
     const pageSize = 5;
-    const pageNumber = parseInt(
-      req.query.page ? req.query.page.toString() : "1"
-    );
+    const pageParam = getQueryString(req.query.page);
+    const pageNumber = parseInt(pageParam, 10) || 1;
     const skip = (pageNumber - 1) * pageSize;
 
-    const hotels = await Hotel.find(query)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(pageSize);
-
+    const hotels = await Hotel.find(query).sort(sortOptions).skip(skip).limit(pageSize);
     const total = await Hotel.countDocuments(query);
 
     const response: HotelSearchResponse = {
@@ -50,185 +63,137 @@ router.get("/search", async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (error) {
-    console.log("error", error);
+    console.error(error);
     res.status(500).json({ message: "Something went wrong" });
   }
 });
 
+/* ---------------- GET ALL HOTELS ---------------- */
 router.get("/", async (req: Request, res: Response) => {
   try {
     const hotels = await Hotel.find().sort("-lastUpdated");
     res.json(hotels);
   } catch (error) {
-    console.log("error", error);
+    console.error(error);
     res.status(500).json({ message: "Error fetching hotels" });
   }
 });
 
+/* ---------------- GET SINGLE HOTEL ---------------- */
 router.get(
   "/:id",
   [param("id").notEmpty().withMessage("Hotel ID is required")],
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const id = req.params.id.toString();
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     try {
       const hotel = await Hotel.findById(id);
       res.json(hotel);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       res.status(500).json({ message: "Error fetching hotel" });
     }
   }
 );
 
+/* ---------------- PAYMENT INTENT ---------------- */
 router.post(
   "/:hotelId/bookings/payment-intent",
   verifyToken,
   async (req: Request, res: Response) => {
-    const { numberOfNights } = req.body;
-    const hotelId = req.params.hotelId;
+    const numberOfNights =
+      typeof req.body.numberOfNights === "string"
+        ? parseInt(req.body.numberOfNights, 10)
+        : req.body.numberOfNights;
+
+    const hotelId = Array.isArray(req.params.hotelId)
+      ? req.params.hotelId[0]
+      : req.params.hotelId;
 
     const hotel = await Hotel.findById(hotelId);
-    if (!hotel) {
-      return res.status(400).json({ message: "Hotel not found" });
-    }
+    if (!hotel) return res.status(400).json({ message: "Hotel not found" });
 
     const totalCost = hotel.pricePerNight * numberOfNights;
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalCost * 100,
       currency: "gbp",
-      metadata: {
-        hotelId,
-        userId: req.userId!,
-      },
+      metadata: { hotelId, userId: req.userId! },
     });
 
-    if (!paymentIntent.client_secret) {
+    if (!paymentIntent.client_secret)
       return res.status(500).json({ message: "Error creating payment intent" });
-    }
 
-    const response = {
+    res.json({
       paymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret.toString(),
       totalCost,
-    };
-
-    res.send(response);
+    });
   }
 );
 
-router.post(
-  "/:hotelId/bookings",
-  verifyToken,
-  async (req: Request, res: Response) => {
-    try {
-      const paymentIntentId = req.body.paymentIntentId;
+/* ---------------- CREATE BOOKING ---------------- */
+router.post("/:hotelId/bookings", verifyToken, async (req: Request, res: Response) => {
+  try {
+    const paymentIntentId = req.body.paymentIntentId as string;
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-      const paymentIntent = await stripe.paymentIntents.retrieve(
-        paymentIntentId as string
-      );
+    if (!paymentIntent) return res.status(400).json({ message: "Payment intent not found" });
 
-      if (!paymentIntent) {
-        return res.status(400).json({ message: "payment intent not found" });
-      }
+    const hotelId = Array.isArray(req.params.hotelId) ? req.params.hotelId[0] : req.params.hotelId;
 
-      if (
-        paymentIntent.metadata.hotelId !== req.params.hotelId ||
-        paymentIntent.metadata.userId !== req.userId
-      ) {
-        return res.status(400).json({ message: "payment intent mismatch" });
-      }
+    if (paymentIntent.metadata.hotelId !== hotelId || paymentIntent.metadata.userId !== req.userId)
+      return res.status(400).json({ message: "Payment intent mismatch" });
 
-      if (paymentIntent.status !== "succeeded") {
-        return res.status(400).json({
-          message: `payment intent not succeeded. Status: ${paymentIntent.status}`,
-        });
-      }
+    if (paymentIntent.status !== "succeeded")
+      return res.status(400).json({ message: `Payment intent not succeeded. Status: ${paymentIntent.status}` });
 
-      const newBooking: BookingType = {
-        ...req.body,
-        userId: req.userId,
-      };
+    const newBooking: BookingType = { ...req.body, userId: req.userId! };
 
-      const hotel = await Hotel.findOneAndUpdate(
-        { _id: req.params.hotelId },
-        {
-          $push: { bookings: newBooking },
-        }
-      );
+    const hotel = await Hotel.findOneAndUpdate({ _id: hotelId }, { $push: { bookings: newBooking } });
 
-      if (!hotel) {
-        return res.status(400).json({ message: "hotel not found" });
-      }
+    if (!hotel) return res.status(400).json({ message: "Hotel not found" });
 
-      await hotel.save();
-      res.status(200).send();
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "something went wrong" });
-    }
+    await hotel.save();
+    res.status(200).send();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Something went wrong" });
   }
-);
+});
 
+/* ---------------- CONSTRUCT SEARCH QUERY ---------------- */
 const constructSearchQuery = (queryParams: any) => {
-  let constructedQuery: any = {};
+  const q: any = {};
+
+  const getSingle = (value: any): string | undefined =>
+    Array.isArray(value) ? value[0] : typeof value === "string" ? value : undefined;
 
   if (queryParams.destination) {
-    constructedQuery.$or = [
-      { city: new RegExp(queryParams.destination, "i") },
-      { country: new RegExp(queryParams.destination, "i") },
-    ];
+    const dest = getSingle(queryParams.destination);
+    if (dest)
+      q.$or = [{ city: new RegExp(dest, "i") }, { country: new RegExp(dest, "i") }];
   }
 
-  if (queryParams.adultCount) {
-    constructedQuery.adultCount = {
-      $gte: parseInt(queryParams.adultCount),
-    };
-  }
-
-  if (queryParams.childCount) {
-    constructedQuery.childCount = {
-      $gte: parseInt(queryParams.childCount),
-    };
-  }
-
-  if (queryParams.facilities) {
-    constructedQuery.facilities = {
-      $all: Array.isArray(queryParams.facilities)
-        ? queryParams.facilities
-        : [queryParams.facilities],
-    };
-  }
-
-  if (queryParams.types) {
-    constructedQuery.type = {
-      $in: Array.isArray(queryParams.types)
-        ? queryParams.types
-        : [queryParams.types],
-    };
-  }
-
+  if (queryParams.adultCount) q.adultCount = { $gte: parseInt(getSingle(queryParams.adultCount) || "0", 10) };
+  if (queryParams.childCount) q.childCount = { $gte: parseInt(getSingle(queryParams.childCount) || "0", 10) };
+  if (queryParams.facilities)
+    q.facilities = { $all: Array.isArray(queryParams.facilities) ? queryParams.facilities : [queryParams.facilities] };
+  if (queryParams.types)
+    q.type = { $in: Array.isArray(queryParams.types) ? queryParams.types : [queryParams.types] };
   if (queryParams.stars) {
-    const starRatings = Array.isArray(queryParams.stars)
-      ? queryParams.stars.map((star: string) => parseInt(star))
-      : parseInt(queryParams.stars);
-
-    constructedQuery.starRating = { $in: starRatings };
+    const stars = Array.isArray(queryParams.stars) ? queryParams.stars.map((s: string) => parseInt(s, 10)) : [parseInt(queryParams.stars, 10)];
+    q.starRating = { $in: stars };
   }
-
   if (queryParams.maxPrice) {
-    constructedQuery.pricePerNight = {
-      $lte: parseInt(queryParams.maxPrice).toString(),
-    };
+    const maxPrice = getSingle(queryParams.maxPrice);
+    if (maxPrice) q.pricePerNight = { $lte: parseInt(maxPrice, 10) };
   }
 
-  return constructedQuery;
+  return q;
 };
 
 export default router;

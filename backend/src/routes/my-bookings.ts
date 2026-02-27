@@ -8,26 +8,30 @@ const router = express.Router();
 // /api/my-bookings
 router.get("/", verifyToken, async (req: Request, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const hotels = await Hotel.find({
       bookings: { $elemMatch: { userId: req.userId } },
     });
 
     const results = hotels.map((hotel) => {
-      const userBookings = hotel.bookings.filter(
+      const safeBookings = hotel.bookings || [];
+
+      const userBookings = safeBookings.filter(
         (booking) => booking.userId === req.userId
       );
 
-      const hotelWithUserBookings: HotelType = {
+      return {
         ...hotel.toObject(),
         bookings: userBookings,
       };
-
-      return hotelWithUserBookings;
     });
 
-    res.status(200).send(results);
+    res.status(200).json(results);
   } catch (error) {
-    console.log(error);
+    console.error("BOOKINGS ERROR:", error);
     res.status(500).json({ message: "Unable to fetch bookings" });
   }
 });
@@ -44,11 +48,12 @@ router.delete(
         bookings: { $elemMatch: { _id: bookingId, userId: req.userId } },
       });
 
+      // ✅ Fix: Handle null properly
       if (!hotel) {
         return res.status(404).json({ message: "Booking not found" });
       }
 
-      hotel.bookings = hotel.bookings.filter(
+      hotel.bookings = (hotel.bookings || []).filter(
         (booking) => booking._id.toString() !== bookingId
       );
 
@@ -75,11 +80,12 @@ router.put(
         bookings: { $elemMatch: { _id: bookingId, userId: req.userId } },
       });
 
+      // ✅ Fix: null check FIRST
       if (!hotel) {
         return res.status(404).json({ message: "Booking not found" });
       }
 
-      const booking = hotel.bookings.find(
+      const booking = hotel.bookings?.find(
         (b) => b._id.toString() === bookingId
       );
 
@@ -89,8 +95,8 @@ router.put(
 
       booking.checkIn = checkIn;
       booking.checkOut = checkOut;
-      booking.adultCount = adultCount;
-      booking.childCount = childCount;
+      booking.adultCount = Number(adultCount);
+      booking.childCount = Number(childCount);
 
       await hotel.save();
 

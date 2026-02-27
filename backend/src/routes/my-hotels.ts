@@ -19,6 +19,7 @@ const upload = multer({
 router.post(
   "/",
   verifyToken,
+  upload.array("imageFiles", 6),
   [
     body("name").notEmpty().withMessage("Name is required"),
     body("city").notEmpty().withMessage("City is required"),
@@ -27,28 +28,37 @@ router.post(
     body("type").notEmpty().withMessage("Hotel type is required"),
     body("pricePerNight")
       .notEmpty()
-      .isNumeric()
+      .isFloat({ min: 0 })
       .withMessage("Price per night must be a number"),
-    body("facilities").isArray().withMessage("Facilities must be an array"),
   ],
-  upload.array("imageFiles", 6),
   async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
-      console.log("BODY:", req.body);
-      console.log("FILES:", req.files);
-      console.log("VALIDATION ERRORS:", errors.array());
+
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
 
       const imageFiles = req.files as MulterFile[];
-      const newHotel: HotelType = req.body;
+
+      // ✅ Convert strings to correct types
+      const newHotel: HotelType = {
+        ...req.body,
+        pricePerNight: Number(req.body.pricePerNight),
+        starRating: Number(req.body.starRating),
+        adultCount: Number(req.body.adultCount),
+        childCount: Number(req.body.childCount),
+        facilities: Array.isArray(req.body.facilities)
+          ? req.body.facilities
+          : [req.body.facilities],
+
+        imageUrls: [],
+        userId: req.userId!,
+        lastUpdated: new Date(),
+      };
 
       const imageUrls = await uploadImages(imageFiles);
       newHotel.imageUrls = imageUrls;
-      newHotel.lastUpdated = new Date();
-      newHotel.userId = req.userId!;
 
       const hotel = new Hotel(newHotel);
       await hotel.save();
@@ -102,18 +112,24 @@ router.put(
       if (!hotel) return res.status(404).json({ message: "Hotel not found" });
 
       // Update fields
-      hotel.name = updatedHotel.name;
-      hotel.city = updatedHotel.city;
-      hotel.country = updatedHotel.country;
-      hotel.description = updatedHotel.description;
-      hotel.type = updatedHotel.type;
-      hotel.pricePerNight = updatedHotel.pricePerNight;
-      hotel.facilities = updatedHotel.facilities;
-      hotel.adultCount = updatedHotel.adultCount;
-      hotel.childCount = updatedHotel.childCount;
-      hotel.starRating = updatedHotel.starRating;
-      hotel.lastUpdated = new Date();
+      hotel.name = req.body.name;
+      hotel.city = req.body.city;
+      hotel.country = req.body.country;
+      hotel.description = req.body.description;
+      hotel.type = req.body.type;
 
+      // ✅ Convert strings to numbers
+      hotel.pricePerNight = Number(req.body.pricePerNight);
+      hotel.starRating = Number(req.body.starRating);
+      hotel.adultCount = Number(req.body.adultCount);
+      hotel.childCount = Number(req.body.childCount);
+
+      // ✅ Ensure facilities is always an array
+      hotel.facilities = Array.isArray(req.body.facilities)
+        ? req.body.facilities
+        : [req.body.facilities];
+
+      hotel.lastUpdated = new Date();
       // Handle new images
       const files = req.files as MulterFile[];
       if (files && files.length > 0) {

@@ -35,6 +35,9 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
+      console.log("BODY:", req.body);
+      console.log("FILES:", req.files);
+      console.log("VALIDATION ERRORS:", errors.array());
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }

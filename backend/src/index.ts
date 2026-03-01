@@ -98,9 +98,17 @@ app.use("/api/my-bookings", myBookingsRoutes);
 // Serve Frontend in Production
 // -------------------------------------
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(pathModule.join(__dirname, "../../frontend/dist")));
+  app.use(
+    express.static(pathModule.join(__dirname, "../../frontend/dist"))
+  );
 
   app.get("*", (req: Request, res: Response) => {
+
+    // 🛑 Prevent API routes from being caught by React
+    if (req.originalUrl.startsWith("/api")) {
+      return res.status(404).json({ message: "API route not found" });
+    }
+
     res.sendFile(
       pathModule.join(__dirname, "../../frontend/dist/index.html")
     );

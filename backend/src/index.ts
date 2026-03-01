@@ -4,7 +4,6 @@
 import path from "path";
 import dotenv from "dotenv";
 
-// Load .env (for Render this is optional if env vars are set in the dashboard)
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 console.log("NODE_ENV:", process.env.NODE_ENV);
@@ -27,32 +26,16 @@ import hotelRoutes from "./routes/hotels";
 import myBookingsRoutes from "./routes/my-bookings";
 
 // -------------------------------------
-// Use only the production Mongo URI
-// -------------------------------------
-const MONGO_URI = process.env.MONGO_URI_PROD;
-
-console.log("Loaded MONGO_URI:", MONGO_URI);
-
-if (!MONGO_URI) {
-  console.error("❌ Missing required environment variable: MONGO_URI_PROD");
-  process.exit(1);
-}
-
-// -------------------------------------
-// Validate other required env variables
+// Validate Required Environment Variables
 // -------------------------------------
 const requiredEnvVars = [
   "JWT_SECRET_KEY",
-  "MONGO_USERNAME",
-  "MONGO_PASSWORD",
-  "MONGO_URI",
+  "MONGO_URI_PROD",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",
   "STRIPE_SECRET_KEY",
-  "PORT",
-  "NODE_ENV",
-  "FRONTEND_URL"
+  "FRONTEND_URL",
 ];
 
 requiredEnvVars.forEach((key) => {
@@ -61,6 +44,8 @@ requiredEnvVars.forEach((key) => {
     process.exit(1);
   }
 });
+
+const MONGO_URI = process.env.MONGO_URI_PROD as string;
 
 // -------------------------------------
 // Configure Cloudinary
@@ -84,7 +69,7 @@ mongoose
   });
 
 // -------------------------------------
-// Initialize Express App
+// Initialize Express
 // -------------------------------------
 const app = express();
 
@@ -95,7 +80,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL].filter(Boolean) as string[],
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
@@ -112,15 +97,21 @@ app.use("/api/my-bookings", myBookingsRoutes);
 // -------------------------------------
 // Serve Frontend in Production
 // -------------------------------------
-app.use(express.static(pathModule.join(__dirname, "../../frontend/dist")));
-app.get("*", (req: Request, res: Response) => {
-  res.sendFile(pathModule.join(__dirname, "../../frontend/dist/index.html"));
-});
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(pathModule.join(__dirname, "../../frontend/dist")));
+
+  app.get("*", (req: Request, res: Response) => {
+    res.sendFile(
+      pathModule.join(__dirname, "../../frontend/dist/index.html")
+    );
+  });
+}
 
 // -------------------------------------
 // Start Server
 // -------------------------------------
 const PORT = process.env.PORT || 7000;
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

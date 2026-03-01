@@ -4,6 +4,7 @@
 import path from "path";
 import dotenv from "dotenv";
 
+// Load .env file from root
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 console.log("NODE_ENV:", process.env.NODE_ENV);
@@ -45,6 +46,9 @@ requiredEnvVars.forEach((key) => {
   }
 });
 
+// -------------------------------------
+// MongoDB URI
+// -------------------------------------
 const MONGO_URI = process.env.MONGO_URI_PROD as string;
 
 // -------------------------------------
@@ -98,20 +102,14 @@ app.use("/api/my-bookings", myBookingsRoutes);
 // Serve Frontend in Production
 // -------------------------------------
 if (process.env.NODE_ENV === "production") {
-  app.use(
-    express.static(pathModule.join(__dirname, "../../frontend/dist"))
-  );
+  const frontendPath = pathModule.join(__dirname, "../../frontend/dist");
+  app.use(express.static(frontendPath));
 
   app.get("*", (req: Request, res: Response) => {
-
-    // 🛑 Prevent API routes from being caught by React
     if (req.originalUrl.startsWith("/api")) {
       return res.status(404).json({ message: "API route not found" });
     }
-
-    res.sendFile(
-      pathModule.join(__dirname, "../../frontend/dist/index.html")
-    );
+    res.sendFile(pathModule.join(frontendPath, "index.html"));
   });
 }
 

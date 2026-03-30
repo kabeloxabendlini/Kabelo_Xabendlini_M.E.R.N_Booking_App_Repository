@@ -16,7 +16,7 @@ const BookingDetailsSummary = ({
   childCount,
   numberOfNights,
   hotel,
-}: Props) => {
+}: Props): JSX.Element => {
   return (
     <div className="grid gap-4 rounded-lg border border-slate-300 p-5 h-fit">
       <h2 className="text-xl font-bold">Your Booking Details</h2>

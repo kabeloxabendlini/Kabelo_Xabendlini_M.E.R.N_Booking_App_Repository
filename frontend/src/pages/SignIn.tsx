@@ -9,11 +9,10 @@ export type SignInFormData = {
   password: string;
 };
 
-const SignIn = () => {
+const SignIn = (): JSX.Element => {
   const { showToast } = useAppContext();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
   const location = useLocation();
 
   const {
@@ -40,17 +39,19 @@ const SignIn = () => {
   return (
     <form className="flex flex-col gap-5" onSubmit={onSubmit}>
       <h2 className="text-3xl font-bold">Sign In</h2>
+
       <label className="text-gray-700 text-sm font-bold flex-1">
         Email
         <input
           type="email"
           className="border rounded w-full py-1 px-2 font-normal"
           {...register("email", { required: "This field is required" })}
-        ></input>
+        />
         {errors.email && (
           <span className="text-red-500">{errors.email.message}</span>
         )}
       </label>
+
       <label className="text-gray-700 text-sm font-bold flex-1">
         Password
         <input
@@ -63,11 +64,12 @@ const SignIn = () => {
               message: "Password must be at least 6 characters",
             },
           })}
-        ></input>
+        />
         {errors.password && (
           <span className="text-red-500">{errors.password.message}</span>
         )}
       </label>
+
       <span className="flex items-center justify-between">
         <span className="text-sm">
           Not Registered?{" "}
@@ -77,9 +79,10 @@ const SignIn = () => {
         </span>
         <button
           type="submit"
-          className="bg-blue-600 text-white p-2 font-bold hover:bg-blue-500 text-xl"
+          disabled={mutation.isLoading}
+          className="bg-blue-600 text-white p-2 font-bold hover:bg-blue-500 text-xl disabled:bg-gray-500"
         >
-          Login
+          {mutation.isLoading ? "Signing in..." : "Login"}
         </button>
       </span>
     </form>

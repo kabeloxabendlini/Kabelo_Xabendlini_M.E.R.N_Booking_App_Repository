@@ -3,6 +3,27 @@
 @tailwind utilities;
 
 /* -------------------------------------------
+   Design tokens
+------------------------------------------- */
+:root {
+  --color-primary:       #2563eb; /* blue-600 */
+  --color-primary-hover: #3b82f6; /* blue-500 */
+  --color-surface:       #ffffff;
+  --color-bg:            #f8fafc; /* slate-50 */
+  --color-border:        #e2e8f0; /* slate-200 */
+  --color-text:          #1e293b; /* slate-800 */
+  --color-text-muted:    #64748b; /* slate-500 */
+  --color-text-body:     #334155; /* slate-700 */
+
+  --radius-sm: 0.375rem; /* rounded-md */
+  --radius-md: 0.5rem;   /* rounded-lg */
+  --radius-lg: 0.75rem;  /* rounded-xl */
+
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* -------------------------------------------
    Global base styles
 ------------------------------------------- */
 @layer base {
@@ -14,21 +35,10 @@
     @apply bg-slate-50 text-slate-800 antialiased;
   }
 
-  h1 {
-    @apply text-3xl font-bold tracking-tight;
-  }
-
-  h2 {
-    @apply text-2xl font-semibold tracking-tight;
-  }
-
-  h3 {
-    @apply text-xl font-semibold;
-  }
-
-  h4 {
-    @apply text-lg font-semibold;
-  }
+  h1 { @apply text-3xl font-bold tracking-tight; }
+  h2 { @apply text-2xl font-semibold tracking-tight; }
+  h3 { @apply text-xl font-semibold; }
+  h4 { @apply text-lg font-semibold; }
 
   p {
     @apply leading-relaxed text-slate-700;
@@ -41,39 +51,54 @@
 
 /* -------------------------------------------
    Reusable UI components
+   (single merged block — no duplicate keys)
 ------------------------------------------- */
 @layer components {
+  /* Layout */
   .page-container {
     @apply max-w-7xl mx-auto px-4 py-6;
   }
 
+  /* Card */
   .card {
     @apply bg-white rounded-xl shadow-sm border border-slate-200;
   }
 
   .card-hover {
-    @apply transition-all hover:shadow-md hover:-translate-y-1;
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-1;
   }
 
+  /* Buttons — .btn is the shared base; variants extend it */
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition;
+    @apply inline-flex items-center justify-center gap-2
+           px-4 py-2 rounded-lg font-semibold
+           transition duration-150 focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-500;
+    @apply btn bg-blue-600 text-white
+           hover:bg-blue-500 focus-visible:ring-blue-500;
   }
 
   .btn-secondary {
-    @apply btn bg-slate-200 text-slate-800 hover:bg-slate-300;
+    @apply btn bg-slate-200 text-slate-800
+           hover:bg-slate-300 focus-visible:ring-slate-400;
   }
 
+  /* Input */
   .input {
-    @apply w-full rounded-md border border-slate-300 px-3 py-2 
-           focus:outline-none focus:ring-2 focus:ring-blue-500;
+    @apply w-full rounded-md border border-slate-300 px-3 py-2
+           focus:outline-none focus:ring-2 focus:ring-blue-500
+           placeholder:text-slate-400 transition;
   }
 
+  /* Badge */
   .badge {
-    @apply inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700;
+    @apply inline-flex items-center px-3 py-1
+           text-xs font-semibold rounded-full
+           bg-slate-100 text-slate-700
+           border border-slate-200;
   }
 }
 
@@ -85,7 +110,9 @@
     @apply text-slate-500;
   }
 
+  /* Fixed: now includes display:grid so the template actually applies */
   .grid-auto-fit {
+    display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
 
@@ -93,47 +120,28 @@
     @apply h-px w-full bg-slate-200;
   }
 
+  /* Fixed: added @supports fallback for backdrop-filter */
   .glass {
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  @supports (backdrop-filter: blur(10px)) {
+    .glass {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.65);
+    }
   }
 }
 
 /* -------------------------------------------
-   Custom scrollbar (polished)
+   Custom scrollbar
 ------------------------------------------- */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #e5e7eb;
-}
+::-webkit-scrollbar       { width: 10px; }
+::-webkit-scrollbar-track { background: #e5e7eb; }
 
 ::-webkit-scrollbar-thumb {
   background: #94a3b8;
   border-radius: 8px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-@layer components {
-  .btn-primary {
-    @apply bg-blue-600 text-white px-5 py-2 rounded-lg font-medium
-           hover:bg-blue-700 transition;
-  }
-
-  .badge {
-    @apply px-3 py-1 bg-gray-100 border rounded-full text-sm;
-  }
-
-  .card {
-    @apply bg-white rounded-xl shadow-md border;
-  }
-
-  .card-hover {
-    @apply transition hover:shadow-lg hover:-translate-y-1;
-  }
-}
+::-webkit-scrollbar-thumb:hover { background: #64748b; }

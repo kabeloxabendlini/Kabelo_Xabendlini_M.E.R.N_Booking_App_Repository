@@ -28,7 +28,7 @@ type Props = {
   isLoading: boolean;
 };
 
-const ManageHotelForm = ({ onSave, isLoading, hotel }: Props) => {
+const ManageHotelForm = ({ onSave, isLoading, hotel }: Props): JSX.Element => {
   const formMethods = useForm<HotelFormData>();
   const { handleSubmit, reset } = formMethods;
 
@@ -48,31 +48,27 @@ const ManageHotelForm = ({ onSave, isLoading, hotel }: Props) => {
     formData.append("country", formDataJson.country);
     formData.append("description", formDataJson.description);
     formData.append("type", formDataJson.type);
-
-    // Convert numbers to strings (FormData requirement)
     formData.append("pricePerNight", String(formDataJson.pricePerNight));
     formData.append("starRating", String(formDataJson.starRating));
     formData.append("adultCount", String(formDataJson.adultCount));
     formData.append("childCount", String(formDataJson.childCount));
 
-    // ✅ FIXED: Send facilities correctly as an array
     formDataJson.facilities.forEach((facility) => {
       formData.append("facilities", facility);
     });
 
-    // Existing image URLs (for edit mode)
     if (formDataJson.imageUrls) {
       formDataJson.imageUrls.forEach((url) => {
         formData.append("imageUrls", url);
       });
     }
 
-    // New images
     if (formDataJson.imageFiles) {
       Array.from(formDataJson.imageFiles).forEach((imageFile) => {
         formData.append("imageFiles", imageFile);
       });
     }
+
     onSave(formData);
   });
 

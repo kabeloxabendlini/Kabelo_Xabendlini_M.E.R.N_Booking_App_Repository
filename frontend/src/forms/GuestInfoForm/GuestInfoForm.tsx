@@ -16,7 +16,7 @@ type GuestInfoFormData = {
   childCount: number;
 };
 
-const GuestInfoForm = ({ hotelId, pricePerNight }: Props) => {
+const GuestInfoForm = ({ hotelId, pricePerNight }: Props): JSX.Element => {
   const search = useSearchContext();
   const { isLoggedIn } = useAppContext();
   const navigate = useNavigate();
@@ -45,35 +45,19 @@ const GuestInfoForm = ({ hotelId, pricePerNight }: Props) => {
   maxDate.setFullYear(maxDate.getFullYear() + 1);
 
   const onSignInClick = (data: GuestInfoFormData) => {
-    search.saveSearchValues(
-      "",
-      data.checkIn,
-      data.checkOut,
-      data.adultCount,
-      data.childCount
-    );
+    search.saveSearchValues("", data.checkIn, data.checkOut, data.adultCount, data.childCount);
     navigate("/sign-in", { state: { from: location } });
   };
 
   const onSubmit = (data: GuestInfoFormData) => {
-    search.saveSearchValues(
-      "",
-      data.checkIn,
-      data.checkOut,
-      data.adultCount,
-      data.childCount
-    );
+    search.saveSearchValues("", data.checkIn, data.checkOut, data.adultCount, data.childCount);
     navigate(`/hotel/${hotelId}/booking`);
   };
 
   return (
     <div className="flex flex-col p-4 bg-blue-200 gap-4">
       <h3 className="text-md font-bold">£{pricePerNight}</h3>
-      <form
-        onSubmit={
-          isLoggedIn ? handleSubmit(onSubmit) : handleSubmit(onSignInClick)
-        }
-      >
+      <form onSubmit={isLoggedIn ? handleSubmit(onSubmit) : handleSubmit(onSignInClick)}>
         <div className="grid grid-cols-1 gap-4 items-center">
           <div>
             <DatePicker
@@ -95,12 +79,12 @@ const GuestInfoForm = ({ hotelId, pricePerNight }: Props) => {
               required
               selected={checkOut}
               onChange={(date) => setValue("checkOut", date as Date)}
-              selectsStart
+              selectsEnd
               startDate={checkIn}
               endDate={checkOut}
               minDate={minDate}
               maxDate={maxDate}
-              placeholderText="Check-in Date"
+              placeholderText="Check-out Date"
               className="min-w-full bg-white p-2 focus:outline-none"
               wrapperClassName="min-w-full"
             />
@@ -115,10 +99,7 @@ const GuestInfoForm = ({ hotelId, pricePerNight }: Props) => {
                 max={20}
                 {...register("adultCount", {
                   required: "This field is required",
-                  min: {
-                    value: 1,
-                    message: "There must be at least one adult",
-                  },
+                  min: { value: 1, message: "There must be at least one adult" },
                   valueAsNumber: true,
                 })}
               />
@@ -130,9 +111,7 @@ const GuestInfoForm = ({ hotelId, pricePerNight }: Props) => {
                 type="number"
                 min={0}
                 max={20}
-                {...register("childCount", {
-                  valueAsNumber: true,
-                })}
+                {...register("childCount", { valueAsNumber: true })}
               />
             </label>
             {errors.adultCount && (

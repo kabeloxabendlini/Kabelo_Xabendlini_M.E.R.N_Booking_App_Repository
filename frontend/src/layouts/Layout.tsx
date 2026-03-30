@@ -1,13 +1,14 @@
+import { ReactNode } from "react";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
 import SearchBar from "../components/SearchBar";
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const Layout = ({ children }: Props) => {
+const Layout = ({ children }: Props): JSX.Element => {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -15,7 +16,7 @@ const Layout = ({ children }: Props) => {
       <div className="container mx-auto">
         <SearchBar />
       </div>
-      <div className="container mx-auto py-10 flex-1">{children}</div>
+      <div className="container mx-auto py-10 flex-1 px-5">{children}</div>
       <Footer />
     </div>
   );

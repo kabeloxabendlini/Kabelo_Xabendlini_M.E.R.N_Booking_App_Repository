@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 import { HotelFormData } from "./ManageHotelForm";
 
-const GuestsSection = () => {
+const GuestsSection = (): JSX.Element => {
   const {
     register,
     formState: { errors },
@@ -17,13 +17,11 @@ const GuestsSection = () => {
             className="border rounded w-full py-2 px-3 font-normal"
             type="number"
             min={1}
-            {...register("adultCount", {
-              required: "This field is required",
-            })}
+            {...register("adultCount", { required: "This field is required" })}
           />
           {errors.adultCount?.message && (
-            <span className="text-red-500 text-sm fold-bold">
-              {errors.adultCount?.message}
+            <span className="text-red-500 text-sm font-bold">
+              {errors.adultCount.message}
             </span>
           )}
         </label>
@@ -33,13 +31,11 @@ const GuestsSection = () => {
             className="border rounded w-full py-2 px-3 font-normal"
             type="number"
             min={0}
-            {...register("childCount", {
-              required: "This field is required",
-            })}
+            {...register("childCount", { required: "This field is required" })}
           />
           {errors.childCount?.message && (
-            <span className="text-red-500 text-sm fold-bold">
-              {errors.childCount?.message}
+            <span className="text-red-500 text-sm font-bold">
+              {errors.childCount.message}
             </span>
           )}
         </label>

@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import multer, { File as MulterFile } from "multer";
+import multer from "multer";
 import cloudinary from "cloudinary";
 import Hotel from "../models/hotel";
 import verifyToken from "../middleware/verifyToken";
@@ -39,9 +39,8 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const imageFiles = req.files as MulterFile[];
+      const imageFiles = req.files as Express.Multer.File[];
 
-      // ✅ Convert strings to correct types
       const newHotel: HotelType = {
         ...req.body,
         pricePerNight: Number(req.body.pricePerNight),
@@ -51,7 +50,6 @@ router.post(
         facilities: Array.isArray(req.body.facilities)
           ? req.body.facilities
           : [req.body.facilities],
-
         imageUrls: [],
         userId: req.userId!,
         lastUpdated: new Date(),
@@ -103,35 +101,27 @@ router.put(
   upload.array("imageFiles", 6),
   async (req: Request, res: Response) => {
     try {
-      const updatedHotel: HotelType = req.body;
-
       const hotel = await Hotel.findOne({
         _id: req.params.hotelId,
         userId: req.userId,
       });
       if (!hotel) return res.status(404).json({ message: "Hotel not found" });
 
-      // Update fields
       hotel.name = req.body.name;
       hotel.city = req.body.city;
       hotel.country = req.body.country;
       hotel.description = req.body.description;
       hotel.type = req.body.type;
-
-      // ✅ Convert strings to numbers
       hotel.pricePerNight = Number(req.body.pricePerNight);
       hotel.starRating = Number(req.body.starRating);
       hotel.adultCount = Number(req.body.adultCount);
       hotel.childCount = Number(req.body.childCount);
-
-      // ✅ Ensure facilities is always an array
       hotel.facilities = Array.isArray(req.body.facilities)
         ? req.body.facilities
         : [req.body.facilities];
-
       hotel.lastUpdated = new Date();
-      // Handle new images
-      const files = req.files as MulterFile[];
+
+      const files = req.files as Express.Multer.File[];
       if (files && files.length > 0) {
         const newImageUrls = await uploadImages(files);
         hotel.imageUrls = [...hotel.imageUrls, ...newImageUrls];
@@ -162,7 +152,7 @@ router.delete("/:hotelId", verifyToken, async (req: Request, res: Response) => {
 });
 
 /* ---------------- CLOUDINARY UPLOAD HELPER ---------------- */
-async function uploadImages(imageFiles: MulterFile[]) {
+async function uploadImages(imageFiles: Express.Multer.File[]): Promise<string[]> {
   if (!imageFiles || imageFiles.length === 0) return [];
 
   const uploadPromises = imageFiles.map(async (image) => {

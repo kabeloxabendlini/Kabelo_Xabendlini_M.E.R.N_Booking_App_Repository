@@ -27,7 +27,7 @@ export type BookingFormData = {
   totalCost: number;
 };
 
-const BookingForm = ({ currentUser, hotelId, paymentIntent }: Props) => {
+const BookingForm = ({ currentUser, hotelId, paymentIntent }: Props): JSX.Element => {
   const stripe = useStripe();
   const elements = useElements();
   const search = useSearchContext();
@@ -56,6 +56,7 @@ const BookingForm = ({ currentUser, hotelId, paymentIntent }: Props) => {
     },
     onSuccess: () => {
       showToast({ message: "Booking saved!", type: "SUCCESS" });
+      queryClient.invalidateQueries("fetchMyBookings");
       navigate("/my-bookings");
     },
   });
@@ -92,10 +93,9 @@ const BookingForm = ({ currentUser, hotelId, paymentIntent }: Props) => {
         hotelId,
         paymentIntentId: result.paymentIntent.id,
         totalCost: paymentIntent.totalCost,
-        _id: result.paymentIntent.id, // temp id for optimistic UI
+        _id: result.paymentIntent.id,
       };
 
-      // Optimistic update: add booking to cache immediately
       queryClient.setQueryData<any>("fetchMyBookings", (old: any) =>
         old?.map((hotel: any) =>
           hotel._id === hotelId
@@ -104,7 +104,6 @@ const BookingForm = ({ currentUser, hotelId, paymentIntent }: Props) => {
         )
       );
 
-      // Persist booking to backend
       bookRoom(newBooking);
     }
   };
